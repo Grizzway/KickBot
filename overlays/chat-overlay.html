@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kick Chat Overlay</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 320px;
+      height: 800px;
+      overflow: hidden;
+      color: white;
+    }
+
+    #chat-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .chat-message {
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(3px);
+      border-left: 3px solid #00ffcc;
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity 2s ease-out, transform 0.3s ease-out;
+      animation: slideIn 0.3s ease-out;
+      word-wrap: break-word;
+      word-break: break-word;
+      hyphens: auto;
+      line-height: 1.3;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .chat-message.fade-out {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 2px;
+    }
+
+    .username {
+      font-weight: bold;
+      font-size: 18px;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
+
+    .badge {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+    }
+
+    .badge svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .message-text {
+      font-size: 17px;
+      margin-left: 2px;
+      color: #ffffff;
+      word-wrap: break-word;
+      word-break: break-word;
+      hyphens: auto;
+      line-height: 1.4;
+      max-width: 100%;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: #cccccc;
+      opacity: 0.7;
+      margin-left: auto;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* Special styling for bot messages */
+    .bot-message {
+      border-left-color: #ff6b6b;
+      background: rgba(255, 107, 107, 0.15);
+    }
+
+    .bot-message .username {
+      color: #ff6b6b !important;
+    }
+
+    /* Special styling for moderator messages */
+    .mod-message {
+      border-left-color: #4ecdc4;
+      background: rgba(78, 205, 196, 0.15);
+    }
+
+    /* Special styling for subscriber messages */
+    .sub-message {
+      border-left-color: #ffe66d;
+      background: rgba(255, 230, 109, 0.15);
+    }
+
+    .connection-status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 12px;
+      color: #00ff00;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .connection-status.disconnected {
+      color: #ff0000;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <div class="connection-status" id="connectionStatus">●</div>
+  </div>
+
+  <script>
+    let lastMessageId = 0;
+    const MAX_MESSAGES = 35;
+    const MESSAGE_LIFETIME = 60000;
+    const messageTimestamps = new Map();
+    const messagesByDataIndex = new Map();
+
+    function createChatMessage(data) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'chat-message';
+      messageDiv.setAttribute('data-id', data.id);
+      messageDiv.setAttribute('data-index', data.dataIndex || '');
+      
+      if (data.username.toLowerCase().includes('bot')) {
+        messageDiv.classList.add('bot-message');
+      }
+      
+      if (data.badges && data.badges.length > 0) {
+        const badgeTypes = data.badges.map(b => b.title.toLowerCase());
+        if (badgeTypes.some(b => b.includes('moderator') || b.includes('mod'))) {
+          messageDiv.classList.add('mod-message');
+        }
+        if (badgeTypes.some(b => b.includes('subscriber') || b.includes('sub'))) {
+          messageDiv.classList.add('sub-message');
+        }
+      }
+
+      const header = document.createElement('div');
+      header.className = 'message-header';
+
+      if (data.badges && data.badges.length > 0) {
+        data.badges.forEach(badge => {
+          const badgeSpan = document.createElement('span');
+          badgeSpan.className = 'badge';
+          badgeSpan.innerHTML = badge.svg;
+          badgeSpan.title = badge.title;
+          header.appendChild(badgeSpan);
+        });
+      }
+
+      const usernameSpan = document.createElement('span');
+      usernameSpan.className = 'username';
+      usernameSpan.textContent = data.username;
+      usernameSpan.style.color = data.userColor || '#ffffff';
+      header.appendChild(usernameSpan);
+
+      const timestampSpan = document.createElement('span');
+      timestampSpan.className = 'timestamp';
+      const now = new Date();
+      timestampSpan.textContent = now.toLocaleTimeString('en-US', { 
+        hour12: false, 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      header.appendChild(timestampSpan);
+
+      const messageText = document.createElement('div');
+      messageText.className = 'message-text';
+      messageText.textContent = data.message;
+
+      messageDiv.appendChild(header);
+      messageDiv.appendChild(messageText);
+
+      return messageDiv;
+    }
+
+    function addMessage(data) {
+      const container = document.getElementById('chat-container');
+      const messageDiv = createChatMessage(data);
+      
+      container.insertBefore(messageDiv, container.lastElementChild);
+      
+      messageTimestamps.set(data.id, Date.now());
+      
+      if (data.dataIndex) {
+        messagesByDataIndex.set(data.dataIndex, messageDiv);
+      }
+      
+      const messages = container.querySelectorAll('.chat-message');
+      if (messages.length > MAX_MESSAGES) {
+        const oldestMessage = messages[0];
+        fadeOutMessage(oldestMessage);
+      }
+      
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeMessageByDataIndex(dataIndex) {
+      console.log(`Attempting to remove message with data-index: ${dataIndex}`);
+      const messageElement = messagesByDataIndex.get(dataIndex);
+      if (messageElement) {
+        console.log(`Found message element, removing: ${dataIndex}`);
+        fadeOutMessage(messageElement);
+        messagesByDataIndex.delete(dataIndex);
+      } else {
+        console.log(`Message element not found for data-index: ${dataIndex}`);
+        console.log(`Available data-indexes:`, Array.from(messagesByDataIndex.keys()));
+      }
+    }
+
+    function fadeOutMessage(messageElement) {
+      messageElement.classList.add('fade-out');
+      setTimeout(() => {
+        if (messageElement.parentNode) {
+          messageElement.parentNode.removeChild(messageElement);
+          const dataIndex = messageElement.getAttribute('data-index');
+          if (dataIndex) {
+            messagesByDataIndex.delete(dataIndex);
+          }
+        }
+      }, 2000);
+    }
+
+    function cleanupOldMessages() {
+      const now = Date.now();
+      const container = document.getElementById('chat-container');
+      const messages = container.querySelectorAll('.chat-message');
+      
+      messages.forEach(messageElement => {
+        const messageId = messageElement.getAttribute('data-id');
+        const timestamp = messageTimestamps.get(parseInt(messageId));
+        
+        if (timestamp && (now - timestamp) > MESSAGE_LIFETIME) {
+          fadeOutMessage(messageElement);
+          messageTimestamps.delete(parseInt(messageId));
+        }
+      });
+    }
+
+    function updateConnectionStatus(connected) {
+      const status = document.getElementById('connectionStatus');
+      status.textContent = connected ? '●' : '○';
+      status.className = connected ? 'connection-status' : 'connection-status disconnected';
+    }
+
+    async function fetchMessages() {
+      try {
+        const response = await fetch('/api/chat');
+        if (!response.ok) throw new Error('Failed to fetch messages');
+        
+        const data = await response.json();
+        updateConnectionStatus(true);
+        
+        data.messages.forEach(message => {
+          if (message.id > lastMessageId) {
+            addMessage(message);
+            lastMessageId = message.id;
+          }
+        });
+        
+        const currentMessageDataIndexes = new Set(data.messages.map(m => m.dataIndex).filter(Boolean));
+        messagesByDataIndex.forEach((element, dataIndex) => {
+          if (dataIndex && !currentMessageDataIndexes.has(dataIndex)) {
+            console.log(`Message ${dataIndex} no longer in active messages, removing from overlay`);
+            removeMessageByDataIndex(dataIndex);
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        updateConnectionStatus(false);
+      }
+    }
+
+    updateConnectionStatus(false);
+    fetchMessages();
+
+    setInterval(fetchMessages, 500);
+
+    setInterval(cleanupOldMessages, 10000);
+  </script>
+</body>
+</html>

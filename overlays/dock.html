@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Controls</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #2a2a2a;
+            --text-color: #e0e0e0;
+            --accent-color: #9147ff;
+            --secondary-color: #772ce8;
+            --danger-color: #f04747;
+            --success-color: #43b581;
+            --music-color: #66ff66;
+            --video-color: #ff6666;
+            --border-radius: 4px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 10px;
+            background-color: var(--panel-bg);
+            border-bottom: 1px solid #3a3a3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .status {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .now-playing {
+            padding: 10px;
+            background-color: var(--panel-bg);
+            border-bottom: 1px solid #3a3a3a;
+            margin-bottom: 5px;
+            flex-shrink: 0;
+        }
+
+        .media-type-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .media-type-badge.music {
+            background-color: var(--music-color);
+            color: #000;
+        }
+
+        .media-type-badge.video {
+            background-color: var(--video-color);
+            color: #fff;
+        }
+
+        .media-title {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 5px;
+        }
+
+        .media-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .progress-container {
+            margin: 10px 0;
+            height: 6px;
+            background-color: #3a3a3a;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            width: 0%;
+            transition: width 1s linear;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 10px;
+            flex-shrink: 0;
+        }
+
+        .control-btn {
+            padding: 6px 10px;
+            background-color: var(--panel-bg);
+            border: 1px solid #3a3a3a;
+            color: var(--text-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            text-align: center;
+        }
+
+        .control-btn:hover {
+            background-color: #3a3a3a;
+        }
+
+        .danger {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+
+        .danger:hover {
+            background-color: #d04040;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--panel-bg);
+            padding: 8px 10px;
+            border-radius: var(--border-radius);
+            margin-top: 10px;
+            flex-shrink: 0;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 5px;
+            background: #3a3a3a;
+            border-radius: var(--border-radius);
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .volume-label {
+            font-size: 12px;
+            min-width: 36px;
+            text-align: right;
+        }
+
+        .queue-header {
+            padding: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            background-color: var(--panel-bg);
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #3a3a3a;
+            flex-shrink: 0;
+        }
+
+        .queue-container {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .queue-item {
+            padding: 8px 10px;
+            border-bottom: 1px solid #3a3a3a;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.2s;
+        }
+
+        .queue-item:hover {
+            background-color: #2c2c2c;
+        }
+
+        .queue-item-details {
+            flex: 1;
+        }
+
+        .queue-item-title {
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-item-info {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .queue-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .queue-btn {
+            padding: 4px 8px;
+            background-color: #3a3a3a;
+            border: none;
+            color: var(--text-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .queue-btn:hover {
+            background-color: #494949;
+        }
+
+        .queue-btn.danger:hover {
+            background-color: #c03a3a;
+        }
+
+        .add-media {
+            padding: 10px;
+            background-color: var(--panel-bg);
+            border-top: 1px solid #3a3a3a;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .media-type-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background-color: #3a3a3a;
+            border: none;
+            color: var(--text-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background-color: #4a4a4a;
+        }
+
+        .tab-btn#add-media:hover {
+            background-color: var(--secondary-color) !important;
+        }
+
+        .tab-btn.active.music {
+            background-color: var(--music-color);
+            color: #000;
+        }
+
+        .tab-btn.active.video {
+            background-color: var(--video-color);
+            color: #fff;
+        }
+
+        .add-media-form {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .add-media-input {
+            flex: 1;
+            min-width: 0;
+            padding: 10px 12px;
+            background-color: #3a3a3a;
+            border: 1px solid #4a4a4a;
+            color: var(--text-color);
+            border-radius: var(--border-radius);
+            font-size: 13px;
+            z-index: 1;
+        }
+
+        .add-media-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 10px;
+            margin-left: 5px;
+            background-color: #3a3a3a;
+        }
+
+        .status-badge.preloaded {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .type-badge {
+            display: inline-block;
+            font-size: 9px;
+            padding: 1px 4px;
+            border-radius: 6px;
+            margin-right: 5px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .type-badge.music {
+            background-color: var(--music-color);
+            color: #000;
+        }
+
+        .type-badge.video {
+            background-color: var(--video-color);
+            color: #fff;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--accent-color);
+            color: white;
+            padding: 10px 15px;
+            border-radius: var(--border-radius);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">Media Controls</div>
+        <div class="status">Connected</div>
+    </div>
+    
+    <div class="now-playing">
+        <div class="media-type-badge" id="media-type-badge" style="display: none;"></div>
+        <div class="media-title" id="media-title">No media playing</div>
+        <div class="media-info">
+            <span class="requester" id="requester">--</span>
+            <span class="time-display" id="time-display">--:-- / --:--</span>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="controls">
+            <button id="toggle-pause" class="control-btn">Play</button>
+            <button id="skip" class="control-btn danger">Skip</button>
+        </div>
+        <div class="volume-control">
+            <span>Vol</span>
+            <input type="range" min="0" max="100" value="100" class="volume-slider" id="volume">
+            <span class="volume-label" id="volume-label">100%</span>
+        </div>
+    </div>
+    
+    <div class="queue-header">
+        <span>Queue (<span id="queue-count">0</span>)</span>
+        <div class="queue-actions">
+            <button id="refresh-queue" class="queue-btn">Refresh</button>
+        </div>
+    </div>
+    
+    <div class="queue-container" id="queue-list">
+    </div>
+    
+    <div class="add-media">
+        <div class="media-type-tabs">
+            <button class="tab-btn active music" id="music-tab">Music</button>
+            <button class="tab-btn video" id="video-tab">Video</button>
+        </div>
+        <div class="add-media-form">
+            <input type="text" class="add-media-input" id="media-url" placeholder="YouTube URL">
+            <button class="tab-btn" id="add-media" style="background-color: var(--accent-color); color: white; flex-shrink: 0; padding: 10px 20px; z-index: 10; position: relative;">Add</button>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3333';
+        const NOW_PLAYING_ENDPOINT = `${API_BASE}/nowplaying`;
+        const QUEUE_ENDPOINT = `${API_BASE}/queue`;
+        const SKIP_ENDPOINT = `${API_BASE}/control/skip`;
+        const TOGGLE_PAUSE_ENDPOINT = `${API_BASE}/control/toggle-pause`;
+        const VOLUME_ENDPOINT = `${API_BASE}/control/volume`;
+        const ADD_MEDIA_ENDPOINT = `${API_BASE}/control/add-media`;
+        const REMOVE_MEDIA_ENDPOINT = `${API_BASE}/control/remove-media`;
+        const REORDER_QUEUE_ENDPOINT = `${API_BASE}/control/reorder-queue`;
+
+        const mediaTypeBadge = document.getElementById('media-type-badge');
+        const mediaTitleEl = document.getElementById('media-title');
+        const requesterEl = document.getElementById('requester');
+        const timeDisplayEl = document.getElementById('time-display');
+        const progressBarEl = document.getElementById('progress-bar');
+        const togglePauseBtn = document.getElementById('toggle-pause');
+        const skipBtn = document.getElementById('skip');
+        const volumeSlider = document.getElementById('volume');
+        const volumeLabel = document.getElementById('volume-label');
+        const queueList = document.getElementById('queue-list');
+        const queueCountEl = document.getElementById('queue-count');
+        const refreshQueueBtn = document.getElementById('refresh-queue');
+        const mediaUrlInput = document.getElementById('media-url');
+        const addMediaBtn = document.getElementById('add-media');
+        const statusEl = document.querySelector('.status');
+        const notificationEl = document.getElementById('notification');
+        const musicTab = document.getElementById('music-tab');
+        const videoTab = document.getElementById('video-tab');
+
+        let currentMedia = null;
+        let queueData = [];
+        let isConnected = true;
+        let selectedMediaType = 'music';
+
+        function showNotification(message) {
+            notificationEl.textContent = message;
+            notificationEl.style.opacity = '1';
+            setTimeout(() => {
+                notificationEl.style.opacity = '0';
+            }, 3000);
+        }
+
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+            statusEl.style.color = connected ? 'var(--success-color)' : 'var(--danger-color)';
+        }
+
+        function setMediaType(type) {
+            selectedMediaType = type;
+            musicTab.classList.toggle('active', type === 'music');
+            videoTab.classList.toggle('active', type === 'video');
+            
+            const placeholder = type === 'music' ? 'YouTube Music URL' : 'YouTube Video URL';
+            mediaUrlInput.placeholder = placeholder;
+        }
+
+        async function makeApiCall(url, method = 'GET', body = null) {
+            try {
+                const options = { method, headers: {} };
+                
+                if (body) {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(url, options);
+                
+                if (response.ok) {
+                    if (!isConnected) {
+                        updateConnectionStatus(true);
+                    }
+                    return await response.json();
+                } else {
+                    throw new Error(`API returned ${response.status}`);
+                }
+            } catch (error) {
+                console.error(`API Call Error: ${error.message}`);
+                updateConnectionStatus(false);
+                return null;
+            }
+        }
+
+        async function updateNowPlaying() {
+            try {
+                const data = await makeApiCall(NOW_PLAYING_ENDPOINT);
+                if (!data) return;
+                
+                mediaTitleEl.textContent = data.title;
+                requesterEl.textContent = `Requested by: ${data.requestedBy}`;
+                timeDisplayEl.textContent = `${data.position} / ${data.length}`;
+                
+                if (data.type && data.type !== 'none') {
+                    mediaTypeBadge.textContent = data.type.toUpperCase();
+                    mediaTypeBadge.className = `media-type-badge ${data.type}`;
+                    mediaTypeBadge.style.display = 'inline-block';
+                } else {
+                    mediaTypeBadge.style.display = 'none';
+                }
+                
+                const progress = data.raw.length > 0 ? (data.raw.position / data.raw.length) * 100 : 0;
+                progressBarEl.style.width = `${progress}%`;
+                
+                togglePauseBtn.textContent = data.isPaused ? 'Play' : 'Pause';
+                
+                if (data.volume !== undefined && !volumeSlider.matches(':active')) {
+                    volumeSlider.value = data.volume;
+                    volumeLabel.textContent = `${data.volume}%`;
+                }
+                
+                currentMedia = data;
+            } catch (error) {
+                console.error('Failed to update now playing:', error);
+            }
+        }
+
+        async function updateQueue() {
+            try {
+                const data = await makeApiCall(QUEUE_ENDPOINT);
+                if (!data) return;
+                
+                queueList.innerHTML = '';
+                queueData = data.queue;
+                queueCountEl.textContent = queueData.length;
+                
+                queueData.forEach((item, index) => {
+                    const queueItem = document.createElement('div');
+                    queueItem.className = 'queue-item';
+                    
+                    queueItem.innerHTML = `
+                        <div class="queue-item-details">
+                            <div class="queue-item-title">
+                                <span class="type-badge ${item.type}">${item.type}</span>
+                                ${item.title}
+                                ${item.preloaded ? '<span class="status-badge preloaded">Ready</span>' : ''}
+                            </div>
+                            <div class="queue-item-info">
+                                Requested by: ${item.requestedBy} • Duration: ${item.duration || 'Unknown'}
+                            </div>
+                        </div>
+                        <div class="queue-actions">
+                            <button class="queue-btn remove-media danger" data-index="${index}">Remove</button>
+                        </div>
+                    `;
+                    
+                    queueList.appendChild(queueItem);
+                    
+                    queueItem.querySelector('.remove-media').addEventListener('click', async () => {
+                        await removeMedia(index);
+                    });
+                });
+            } catch (error) {
+                console.error('Failed to update queue:', error);
+            }
+        }
+
+        async function skipMedia() {
+            try {
+                const response = await makeApiCall(SKIP_ENDPOINT, 'POST');
+                if (response && response.success) {
+                    showNotification('Skipped current media');
+                    setTimeout(() => updateQueue(), 500);
+                }
+            } catch (error) {
+                console.error('Failed to skip media:', error);
+            }
+        }
+
+        async function togglePause() {
+            try {
+                const response = await makeApiCall(TOGGLE_PAUSE_ENDPOINT, 'POST');
+                if (response && response.success) {
+                    showNotification(response.message);
+                }
+            } catch (error) {
+                console.error('Failed to toggle pause:', error);
+            }
+        }
+
+        async function setVolume(volume) {
+            try {
+                await makeApiCall(VOLUME_ENDPOINT, 'POST', { volume });
+                volumeLabel.textContent = `${volume}%`;
+            } catch (error) {
+                console.error('Failed to set volume:', error);
+            }
+        }
+
+        async function addMedia(url) {
+            if (!url.match(/(youtube\.com\/watch\?v=|youtu\.be\/)/)) {
+                showNotification('Invalid YouTube URL');
+                return;
+            }
+            
+            try {
+                const response = await makeApiCall(ADD_MEDIA_ENDPOINT, 'POST', { 
+                    url, 
+                    requestedBy: 'OBS Dock',
+                    type: selectedMediaType
+                });
+                
+                if (response && response.success) {
+                    mediaUrlInput.value = '';
+                    showNotification(`${selectedMediaType} added to queue`);
+                    setTimeout(() => updateQueue(), 500);
+                } else {
+                    showNotification(response.message || 'Failed to add media');
+                }
+            } catch (error) {
+                console.error('Failed to add media:', error);
+            }
+        }
+
+        async function removeMedia(index) {
+            try {
+                const response = await makeApiCall(REMOVE_MEDIA_ENDPOINT, 'POST', { index });
+                if (response && response.success) {
+                    showNotification(response.message);
+                    setTimeout(() => updateQueue(), 500);
+                }
+            } catch (error) {
+                console.error('Failed to remove media:', error);
+            }
+        }
+
+        musicTab.addEventListener('click', () => setMediaType('music'));
+        videoTab.addEventListener('click', () => setMediaType('video'));
+        
+        skipBtn.addEventListener('click', skipMedia);
+        togglePauseBtn.addEventListener('click', togglePause);
+        
+        volumeSlider.addEventListener('input', () => {
+            const volume = parseInt(volumeSlider.value);
+            volumeLabel.textContent = `${volume}%`;
+        });
+        volumeSlider.addEventListener('change', () => {
+            const volume = parseInt(volumeSlider.value);
+            setVolume(volume);
+        });
+        
+        refreshQueueBtn.addEventListener('click', updateQueue);
+        
+        addMediaBtn.addEventListener('click', () => {
+            addMedia(mediaUrlInput.value.trim());
+        });
+        
+        mediaUrlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                addMedia(mediaUrlInput.value.trim());
+            }
+        });
+
+        setMediaType('music');
+        updateNowPlaying();
+        updateQueue();
+
+        setInterval(updateNowPlaying, 1000);
+        setInterval(updateQueue, 5000);
+    </script>
+</body>
+</html>

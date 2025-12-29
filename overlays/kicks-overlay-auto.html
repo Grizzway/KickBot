@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kicks Goal Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        .kicks-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border-radius: 15px;
+            padding: 20px 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid #53FC18;
+            animation: fadeIn 0.5s ease-out;
+            min-width: 250px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .title {
+            color: #53FC18;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(83, 252, 24, 0.5);
+        }
+
+        .kicks-display {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .kicks-count {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(83, 252, 24, 0.8);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .kicks-count.updating {
+            animation: bounce 0.5s ease-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+        }
+
+        .kicks-icon {
+            width: 30px;
+            height: 30px;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        .goal-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(83, 252, 24, 0.3);
+        }
+
+        .goal-label {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(83, 252, 24, 0.3);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #53FC18 0%, #00FF8C 100%);
+            transition: width 0.5s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(255, 255, 255, 0.3) 30%,
+                rgba(255, 255, 255, 0.3) 70%,
+                transparent 70%
+            );
+            animation: shimmer 2s linear infinite;
+            background-size: 50px 100%;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -50px 0;
+            }
+            100% {
+                background-position: 50px 0;
+            }
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-weight: bold;
+            font-size: 12px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            z-index: 1;
+        }
+
+        .goal-reached {
+            animation: celebrate 0.5s ease-out;
+        }
+
+        @keyframes celebrate {
+            0%, 100% {
+                transform: scale(1) rotate(0deg);
+            }
+            25% {
+                transform: scale(1.1) rotate(5deg);
+            }
+            75% {
+                transform: scale(1.1) rotate(-5deg);
+            }
+        }
+
+        .celebration-text {
+            color: #FFD700;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            animation: flash 1s ease-in-out infinite;
+        }
+
+        @keyframes flash {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Configuration panel */
+        .config-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #53FC18;
+            display: none;
+        }
+
+        .config-panel.show {
+            display: block;
+        }
+
+        .config-input {
+            margin: 10px 0;
+            display: block;
+        }
+
+        .config-input label {
+            color: #53FC18;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .config-input input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #53FC18;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            width: 150px;
+        }
+
+        .config-button {
+            background: #53FC18;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .config-button:hover {
+            background: #00FF8C;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #888;
+        }
+
+        .status-indicator.connected {
+            background: #53FC18;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="kicks-container">
+        <div class="status-indicator" id="statusIndicator"></div>
+        <div class="title">Kicks Earned</div>
+        <div class="kicks-display">
+            <span class="kicks-count" id="kicksCount">0</span>
+            <svg class="kicks-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7.67318 0.0611465L3.07733 1.75287C2.86614 1.8344 2.68512 1.98726 2.5745 2.18089L0.130751 6.47134C0.0201286 6.67516 -0.0200977 6.89936 0.0201286 7.13376L0.86488 12.0051C0.905107 12.2293 1.02579 12.4331 1.19675 12.586L4.93779 15.7656C5.10875 15.9083 5.33 15.9898 5.5613 15.9898H10.4488C10.6801 15.9898 10.8913 15.9083 11.0723 15.7656L14.8133 12.586C14.9843 12.4433 15.105 12.2293 15.1452 12.0051L15.99 7.13376C16.0302 6.90955 15.99 6.67516 15.8793 6.47134L13.4356 2.18089C13.325 1.97707 13.1439 1.8344 12.9328 1.75287L8.32685 0.0611465C8.11566 -0.0203822 7.88436 -0.0203822 7.66312 0.0611465H7.67318Z" fill="url(#paint0_linear)"/>
+                <defs>
+                    <linearGradient id="paint0_linear" x1="0" y1="8" x2="16" y2="8" gradientUnits="userSpaceOnUse">
+                        <stop offset="0.02" stop-color="#FFFF00"/>
+                        <stop offset="0.4" stop-color="#53FC18"/>
+                        <stop offset="1" stop-color="#01FFFF"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+        </div>
+        
+        <div class="goal-section" id="goalSection" style="display: none;">
+            <div class="goal-label">Goal Progress</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%">
+                    <div class="progress-text" id="progressText">0 / 0</div>
+                </div>
+            </div>
+            <div class="celebration-text" id="celebrationText" style="display: none;">
+                🎉 GOAL REACHED! 🎉
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Panel (press Ctrl+Shift+C to toggle) -->
+    <div class="config-panel" id="configPanel">
+        <h3 style="color: #53FC18; margin-bottom: 15px;">Overlay Settings</h3>
+        <div class="config-input">
+            <label>Goal (0 to hide):</label>
+            <input type="number" id="goalInput" value="0" min="0">
+        </div>
+        <div class="config-input">
+            <label>API URL:</label>
+            <input type="text" id="apiUrlInput" value="http://localhost:3335">
+        </div>
+        <button class="config-button" onclick="updateSettings()">Apply</button>
+        <button class="config-button" onclick="resetKicks()" style="background: #ff4444;">Reset Kicks</button>
+    </div>
+
+    <script>
+        // Configuration
+        let config = {
+            currentKicks: 0,
+            goalKicks: 0,
+            apiUrl: 'http://localhost:3335',
+            storageKey: 'kicksOverlaySettings',
+            refreshInterval: 2000 // Update every 2 seconds
+        };
+
+        let lastKicks = 0;
+        let isConnected = false;
+        let refreshTimer = null;
+
+        // Load saved settings
+        function loadSettings() {
+            const saved = localStorage.getItem(config.storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                config.goalKicks = data.goalKicks || 0;
+                config.apiUrl = data.apiUrl || 'http://localhost:3335';
+            }
+            document.getElementById('goalInput').value = config.goalKicks;
+            document.getElementById('apiUrlInput').value = config.apiUrl;
+        }
+
+        // Save settings
+        function saveSettings() {
+            localStorage.setItem(config.storageKey, JSON.stringify({
+                goalKicks: config.goalKicks,
+                apiUrl: config.apiUrl
+            }));
+        }
+
+        // Fetch kicks from API
+        async function fetchKicks() {
+            try {
+                const response = await fetch(`${config.apiUrl}/api/kicks`);
+                if (!response.ok) throw new Error('API request failed');
+                
+                const data = await response.json();
+                config.currentKicks = data.totalKicks;
+                
+                // Update connection status
+                if (!isConnected) {
+                    isConnected = true;
+                    document.getElementById('statusIndicator').classList.add('connected');
+                }
+                
+                // Check if kicks increased (new gift received)
+                if (config.currentKicks > lastKicks && lastKicks > 0) {
+                    animateKicksIncrease();
+                }
+                
+                lastKicks = config.currentKicks;
+                updateDisplay();
+                
+            } catch (error) {
+                console.error('Error fetching kicks:', error);
+                isConnected = false;
+                document.getElementById('statusIndicator').classList.remove('connected');
+            }
+        }
+
+        // Animate kicks increase
+        function animateKicksIncrease() {
+            const kicksCount = document.getElementById('kicksCount');
+            kicksCount.classList.add('updating');
+            setTimeout(() => {
+                kicksCount.classList.remove('updating');
+            }, 500);
+        }
+
+        // Update display
+        function updateDisplay() {
+            // Update kicks count
+            document.getElementById('kicksCount').textContent = config.currentKicks.toLocaleString();
+            
+            // Update goal section
+            const goalSection = document.getElementById('goalSection');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const celebrationText = document.getElementById('celebrationText');
+            
+            if (config.goalKicks > 0) {
+                goalSection.style.display = 'block';
+                
+                const percentage = Math.min((config.currentKicks / config.goalKicks) * 100, 100);
+                progressFill.style.width = percentage + '%';
+                progressText.textContent = `${config.currentKicks.toLocaleString()} / ${config.goalKicks.toLocaleString()}`;
+                
+                if (config.currentKicks >= config.goalKicks) {
+                    celebrationText.style.display = 'block';
+                    document.querySelector('.kicks-container').classList.add('goal-reached');
+                } else {
+                    celebrationText.style.display = 'none';
+                    document.querySelector('.kicks-container').classList.remove('goal-reached');
+                }
+            } else {
+                goalSection.style.display = 'none';
+            }
+        }
+
+        // Update settings from config panel
+        function updateSettings() {
+            config.goalKicks = parseInt(document.getElementById('goalInput').value) || 0;
+            config.apiUrl = document.getElementById('apiUrlInput').value;
+            saveSettings();
+            updateDisplay();
+            
+            // Restart refresh timer with new API URL
+            stopRefresh();
+            startRefresh();
+        }
+
+        // Reset kicks (requires API call)
+        async function resetKicks() {
+            if (confirm('Are you sure you want to reset kicks to 0?')) {
+                try {
+                    const response = await fetch(`${config.apiUrl}/api/kicks/reset`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        config.currentKicks = 0;
+                        lastKicks = 0;
+                        updateDisplay();
+                        alert('Kicks reset to 0!');
+                    }
+                } catch (error) {
+                    alert('Error resetting kicks: ' + error.message);
+                }
+            }
+        }
+
+        // Start auto-refresh
+        function startRefresh() {
+            fetchKicks(); // Initial fetch
+            refreshTimer = setInterval(fetchKicks, config.refreshInterval);
+        }
+
+        // Stop auto-refresh
+        function stopRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+            }
+        }
+
+        // Keyboard shortcut for config panel
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                const panel = document.getElementById('configPanel');
+                panel.classList.toggle('show');
+            }
+        });
+
+        // Initialize
+        loadSettings();
+        startRefresh();
+        
+        // Listen for messages from parent window (OBS Browser Source)
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'setGoal') {
+                config.goalKicks = event.data.goal;
+                saveSettings();
+                updateDisplay();
+            } else if (event.data.type === 'refresh') {
+                fetchKicks();
+            }
+        });
+
+        // Stop refresh when page is hidden (to save resources)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopRefresh();
+            } else {
+                startRefresh();
+            }
+        });
+    </script>
+</body>
+</html>
