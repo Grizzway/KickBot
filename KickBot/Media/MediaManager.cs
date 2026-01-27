@@ -34,8 +34,8 @@ public class MediaManager
         Directory.CreateDirectory(_musicDirectory);
         Directory.CreateDirectory(_videoDirectory);
 
-        var projectRoot = Directory.GetParent(AppContext.BaseDirectory)!.Parent!.Parent!.Parent!.FullName;
-        var mediaToolsPath = Path.Combine(projectRoot, "Media");
+        var exeDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? AppContext.BaseDirectory;
+        var mediaToolsPath = Path.Combine(exeDirectory, "Media");
         _ytdlpPath = Path.Combine(mediaToolsPath, "yt-dlp.exe");
         _ffprobePath = Path.Combine(mediaToolsPath, "ffmpeg", "bin", "ffprobe.exe");
         _ffmpegPath = Path.Combine(mediaToolsPath, "ffmpeg", "bin", "ffmpeg.exe");

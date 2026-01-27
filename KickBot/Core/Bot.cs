@@ -187,12 +187,13 @@ public class Bot
 
         _commandHandler = new CommandHandler(_config.CommandPrefix);
 
-        var projectRoot = Directory.GetParent(AppContext.BaseDirectory)!.Parent!.Parent!.Parent!.FullName;
+        var exeDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? AppContext.BaseDirectory;
 
         var elevenLabsApiKey = Environment.GetEnvironmentVariable("ELEVENLABS_API_KEY");
         if (!string.IsNullOrEmpty(elevenLabsApiKey))
         {
-            var sfxPath = Path.Combine(projectRoot, "Webserver", "sfx");
+            var sfxPath = Path.Combine(exeDirectory, "Webserver", "sfx");
+            Directory.CreateDirectory(sfxPath);
 
             _elevenLabsManager = new ElevenLabsManager(elevenLabsApiKey, sfxPath);
             _sfxWebSocketServer = new SfxWebSocketServer();
@@ -204,7 +205,7 @@ public class Bot
             Console.WriteLine("ELEVENLABS_API_KEY not found, SFX disabled");
         }
 
-        var mediaPath = Path.Combine(projectRoot, "Media", "media");
+        var mediaPath = Path.Combine(exeDirectory, "Media", "media");
         _mediaManager = new MediaManager(mediaPath, _config.MaxMediaDurationMinutes);
         Console.WriteLine("Media Manager enabled");
 
@@ -369,8 +370,18 @@ public class Bot
 
     private void StartOAuthServer()
     {
-        var projectRoot = Directory.GetParent(AppContext.BaseDirectory)!.Parent!.Parent!.Parent!.FullName;
-        var webserverPath = Path.Combine(projectRoot, "Webserver");
+        var exeDirectory = Path.GetDirectoryName(AppContext.BaseDirectory) ?? AppContext.BaseDirectory;
+        var webserverPath = Path.Combine(exeDirectory, "Webserver");
+
+        if (!Directory.Exists(webserverPath))
+        {
+            Console.WriteLine($"[NODE-ERROR] Webserver directory not found at: {webserverPath}");
+            Console.WriteLine("[NODE-ERROR] Make sure the Webserver folder is in the same directory as KickBot.exe");
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
+            Environment.Exit(1);
+            return;
+        }
 
         Console.WriteLine($"[NODE] Starting server from: {webserverPath}");
 
@@ -400,11 +411,22 @@ public class Bot
                 Console.WriteLine($"[NODE-ERROR] {e.Data}");
         };
 
-        _nodeServerProcess.Start();
-        _nodeServerProcess.BeginOutputReadLine();
-        _nodeServerProcess.BeginErrorReadLine();
+        try
+        {
+            _nodeServerProcess.Start();
+            _nodeServerProcess.BeginOutputReadLine();
+            _nodeServerProcess.BeginErrorReadLine();
 
-        Thread.Sleep(2000);
-        Console.WriteLine("[NODE] Server should be running");
+            Thread.Sleep(2000);
+            Console.WriteLine("[NODE] Server should be running");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NODE-ERROR] Failed to start Node server: {ex.Message}");
+            Console.WriteLine("[NODE-ERROR] Make sure Node.js is installed and 'node' is in your PATH");
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
+            Environment.Exit(1);
+        }
     }
 }
