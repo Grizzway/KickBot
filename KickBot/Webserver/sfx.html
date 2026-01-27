@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SFX Player</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <audio id="sfxPlayer" style="display: none;"></audio>
+    <script>
+        const ws = new WebSocket('ws://localhost:8080');
+        const player = document.getElementById('sfxPlayer');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'playSfx') {
+                player.src = data.url;
+                player.play().catch(err => console.error('Play error:', err));
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "ChannelName": "Grizzway",
+  "CommandPrefix": ">",
+  "NewUserBonus": 100,
+  "WelcomeMessage": "Welcome to chat @{username}! Here are {tokens} bonus tokens!",
+  "GiftThankYouMessage": "Thanks for the {giftName}, @{username}! You earned {tokens} tokens!",
+  "SubThankYouMessage": "Thanks for gifting {count} sub(s), @{username}! You earned {tokens} tokens!",
+  "SfxCost": 25,
+  "MusicCost": 50,
+  "VideoCost": 100,
+  "MinimumKicks": 1,
+  "KickToTokenRatio": 1.0,
+  "SubToTokenRatio": 500,
+  "MaxMediaDurationMinutes": 8
+}

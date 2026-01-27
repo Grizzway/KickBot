@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kick OAuth Callback</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #0f0f23;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: #1a1a2e;
+            border-radius: 10px;
+        }
+
+        #url {
+            background: #2d2d44;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        button {
+            background: #53fc18;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #6bff3a;
+            }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kick OAuth Success</h1>
+        <p>Copy this URL and paste it into your console:</p>
+        <div id="url"></div>
+        <button onclick="copyUrl()">Copy URL</button>
+    </div>
+    <script>
+        const fullUrl = window.location.href;
+        document.getElementById('url').textContent = fullUrl;
+
+        function copyUrl() {
+            navigator.clipboard.writeText(fullUrl);
+            alert('URL copied to clipboard!');
+        }
+    </script>
+</body>
+</html>

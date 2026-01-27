@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Media Player</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        #videoPlayer {
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        #audioPlayer {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <video id="videoPlayer" controls></video>
+    <audio id="audioPlayer"></audio>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8081');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'play') {
+                playMedia(data.data);
+            } else if (data.type === 'control') {
+                handleControl(data.action);
+            } else if (data.type === 'nowplaying') {
+                if (!data.current) {
+                    stopAllMedia();
+                }
+            }
+        };
+
+        function playMedia(media) {
+            stopAllMedia();
+
+            if (media.type === 'video') {
+                videoPlayer.src = media.url;
+                videoPlayer.style.display = 'block';
+                videoPlayer.play();
+
+                videoPlayer.onended = () => {
+                    stopAllMedia();
+                };
+
+                videoPlayer.ontimeupdate = () => {
+                    broadcastProgress(videoPlayer.currentTime, videoPlayer.duration);
+                };
+            } else if (media.type === 'music') {
+                audioPlayer.src = media.url;
+                audioPlayer.play();
+
+                audioPlayer.onended = () => {
+                    stopAllMedia();
+                };
+
+                audioPlayer.ontimeupdate = () => {
+                    broadcastProgress(audioPlayer.currentTime, audioPlayer.duration);
+                };
+            }
+        }
+
+        function broadcastProgress(current, total) {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'progress_update',
+                    current: current,
+                    total: total
+                }));
+            }
+        }
+
+        function handleControl(action) {
+            if (action === 'pause') {
+                videoPlayer.pause();
+                audioPlayer.pause();
+            } else if (action === 'resume') {
+                videoPlayer.play();
+                audioPlayer.play();
+            } else if (action === 'skip') {
+                stopAllMedia();
+            }
+        }
+
+        function stopAllMedia() {
+            videoPlayer.pause();
+            videoPlayer.src = '';
+            videoPlayer.style.display = 'none';
+
+            audioPlayer.pause();
+            audioPlayer.src = '';
+        }
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onopen = () => {
+            console.log('Connected to media WebSocket server');
+        };
+    </script>
+</body>
+</html>

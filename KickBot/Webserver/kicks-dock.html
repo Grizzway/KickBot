@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kicks Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .stat-card {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .controls {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #00ff88;
+            border: none;
+            border-radius: 5px;
+            color: #000;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+            button:hover {
+                background: #00cc66;
+            }
+
+            button.danger {
+                background: #e74c3c;
+                color: #fff;
+            }
+
+                button.danger:hover {
+                    background: #c0392b;
+                }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .progress-section {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #00cc66 100%);
+            transition: width 0.5s ease;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kicks Tracker Control</h1>
+
+        <div class="stat-card">
+            <div class="stat-label">Total Kicks</div>
+            <div class="stat-value" id="totalKicks">0</div>
+            <div class="progress-section">
+                <div class="stat-label">Goal: <span id="goalAmount">0</span> - <span id="goalTitle">No Goal Set</span></div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div class="stat-label" style="text-align: center;"><span id="percentage">0%</span> complete</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <h2 style="margin-bottom: 15px; font-size: 18px;">Set Goal</h2>
+            <div class="control-group">
+                <label>Goal Amount</label>
+                <input type="number" id="goalInput" placeholder="e.g., 1000" min="0">
+            </div>
+            <div class="control-group">
+                <label>Goal Title</label>
+                <input type="text" id="goalTitleInput" placeholder="e.g., Stream Goal">
+            </div>
+            <button onclick="setGoal()">Update Goal</button>
+        </div>
+
+        <div class="controls">
+            <h2 style="margin-bottom: 15px; font-size: 18px;">Manual Adjustments</h2>
+            <div class="control-group">
+                <label>Add/Remove Kicks</label>
+                <input type="number" id="addKicksInput" placeholder="Use negative to subtract">
+                <div class="hint">Tip: Use negative numbers to subtract (e.g., -50)</div>
+            </div>
+            <div class="button-group">
+                <button onclick="addKicks()">Apply</button>
+                <button class="danger" onclick="resetTotal()">Reset Total</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8082');
+
+        ws.onopen = () => {
+            console.log('[KICKS] Connected to WebSocket');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'kicks_update') {
+                updateDisplay(data.total, data.goal, data.goalTitle);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('[KICKS] WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('[KICKS] Disconnected, reconnecting in 3s...');
+            setTimeout(() => location.reload(), 3000);
+        };
+
+        function updateDisplay(total, goal, goalTitle) {
+            document.getElementById('totalKicks').textContent = total.toLocaleString();
+            document.getElementById('goalAmount').textContent = goal.toLocaleString();
+            document.getElementById('goalTitle').textContent = goalTitle;
+
+            if (goal > 0) {
+                const progress = Math.min((total / goal) * 100, 100);
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                document.getElementById('percentage').textContent = `${progress.toFixed(1)}%`;
+            } else {
+                document.getElementById('progressBar').style.width = '0%';
+                document.getElementById('percentage').textContent = '0%';
+            }
+        }
+
+        async function setGoal() {
+            const goal = parseInt(document.getElementById('goalInput').value) || 0;
+            const title = document.getElementById('goalTitleInput').value || 'Kick Goal';
+
+            try {
+                const response = await fetch('http://localhost:8082/api/kicks/goal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ goal, title })
+                });
+
+                if (response.ok) {
+                    console.log('Goal updated');
+                    document.getElementById('goalInput').value = '';
+                    document.getElementById('goalTitleInput').value = '';
+                }
+            } catch (error) {
+                console.error('Error setting goal:', error);
+            }
+        }
+
+        async function addKicks() {
+            const amount = parseInt(document.getElementById('addKicksInput').value);
+
+            if (isNaN(amount) || amount === 0) {
+                alert('Please enter a valid number');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8082/api/kicks/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount })
+                });
+
+                if (response.ok) {
+                    console.log('Kicks adjusted');
+                    document.getElementById('addKicksInput').value = '';
+                }
+            } catch (error) {
+                console.error('Error adding kicks:', error);
+            }
+        }
+
+        async function resetTotal() {
+            if (!confirm('Are you sure you want to reset the total kicks to 0?')) return;
+
+            try {
+                const response = await fetch('http://localhost:8082/api/kicks/reset', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    console.log('Total reset');
+                }
+            } catch (error) {
+                console.error('Error resetting total:', error);
+            }
+        }
+    </script>
+</body>
+</html>

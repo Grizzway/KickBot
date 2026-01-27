@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kicks Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        .kicks-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px 30px;
+            border-radius: 15px;
+            border: 2px solid #00ff88;
+            box-shadow: 0 8px 32px rgba(0, 255, 136, 0.3);
+            color: white;
+            min-width: 300px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .kicks-icon {
+            width: 32px;
+            height: 32px;
+            filter: drop-shadow(0 0 5px #00ff88);
+        }
+
+        .goal-title {
+            font-size: 18px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00ff88;
+        }
+
+        .kicks-display {
+            font-size: 48px;
+            font-weight: 800;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            color: #00ff88;
+        }
+
+        .goal-info {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-top: 5px;
+            color: #ccc;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-top: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88 0%, #00cc66 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .percentage {
+            text-align: center;
+            font-size: 14px;
+            margin-top: 5px;
+            font-weight: 600;
+            color: #00ff88;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .kicks-display.updated {
+            animation: pulse 0.3s ease;
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 8px 32px rgba(0, 255, 136, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 8px 32px rgba(0, 255, 136, 0.6);
+            }
+        }
+
+        .kicks-container.updated {
+            animation: glow 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="kicks-container" id="container">
+        <div class="header">
+            <svg class="kicks-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7.67318 0.0611465L3.07733 1.75287C2.86614 1.8344 2.68512 1.98726 2.5745 2.18089L0.130751 6.47134C0.0201286 6.67516 -0.0200977 6.89936 0.0201286 7.13376L0.86488 12.0051C0.905107 12.2293 1.02579 12.4331 1.19675 12.586L4.93779 15.7656C5.10875 15.9083 5.33 15.9898 5.5613 15.9898H10.4488C10.6801 15.9898 10.8913 15.9083 11.0723 15.7656L14.8133 12.586C14.9843 12.4433 15.105 12.2293 15.1452 12.0051L15.99 7.13376C16.0302 6.90955 15.99 6.67516 15.8793 6.47134L13.4356 2.18089C13.325 1.97707 13.1439 1.8344 12.9328 1.75287L8.32685 0.0611465C8.11566 -0.0203822 7.88436 -0.0203822 7.66312 0.0611465H7.67318Z" fill="url(#paint0_linear)" />
+                <defs>
+                    <linearGradient id="paint0_linear" x1="0" y1="8" x2="16" y2="8" gradientUnits="userSpaceOnUse">
+                        <stop offset="0.02" stop-color="#FFFF00" />
+                        <stop offset="0.4" stop-color="#53FC18" />
+                        <stop offset="1" stop-color="#01FFFF" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="goal-title" id="goalTitle">Kick Goal</div>
+        </div>
+        <div class="kicks-display" id="kicksTotal">0</div>
+        <div class="goal-info" id="goalInfo">Goal: 0</div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+        <div class="percentage" id="percentage">0%</div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8082');
+
+        const kicksTotal = document.getElementById('kicksTotal');
+        const goalTitle = document.getElementById('goalTitle');
+        const goalInfo = document.getElementById('goalInfo');
+        const progressBar = document.getElementById('progressBar');
+        const percentage = document.getElementById('percentage');
+        const container = document.getElementById('container');
+
+        ws.onopen = () => {
+            console.log('[KICKS] Connected to WebSocket');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'kicks_update') {
+                kicksTotal.textContent = data.total.toLocaleString();
+                goalTitle.textContent = data.goalTitle;
+                goalInfo.textContent = `Goal: ${data.goal.toLocaleString()}`;
+
+                kicksTotal.classList.add('updated');
+                container.classList.add('updated');
+                setTimeout(() => {
+                    kicksTotal.classList.remove('updated');
+                    container.classList.remove('updated');
+                }, 500);
+
+                if (data.goal > 0) {
+                    const progress = Math.min((data.total / data.goal) * 100, 100);
+                    progressBar.style.width = `${progress}%`;
+                    percentage.textContent = `${progress.toFixed(1)}%`;
+                } else {
+                    progressBar.style.width = '0%';
+                    percentage.textContent = '0%';
+                }
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('[KICKS] WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('[KICKS] Disconnected, reconnecting in 3s...');
+            setTimeout(() => location.reload(), 3000);
+        };
+    </script>
+</body>
+</html>

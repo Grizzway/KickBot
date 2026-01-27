@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Now Playing</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        #nowPlaying {
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            width: 350px;
+        }
+
+            #nowPlaying.visible {
+                display: block;
+            }
+
+        .title-container {
+            height: 22px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+            .title.scrolling {
+                animation: scroll-text 10s linear infinite;
+            }
+
+        @keyframes scroll-text {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #bbb;
+            margin-bottom: 10px;
+        }
+
+        .requester {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .queue-count {
+            margin-left: 10px;
+            color: #9147ff;
+            font-weight: bold;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #9147ff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div id="nowPlaying">
+        <div class="title-container">
+            <div class="title" id="mediaTitle">No media playing</div>
+        </div>
+        <div class="info-row">
+            <div class="requester" id="mediaRequester">Requested by: --</div>
+            <div class="queue-count" id="queueCount">Queue: 0</div>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="time-info">
+            <span id="currentTime">0:00</span>
+            <span id="totalTime">0:00</span>
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8081');
+        const nowPlaying = document.getElementById('nowPlaying');
+        const mediaTitle = document.getElementById('mediaTitle');
+        const mediaRequester = document.getElementById('mediaRequester');
+        const queueCount = document.getElementById('queueCount');
+        const progressBar = document.getElementById('progressBar');
+        const currentTime = document.getElementById('currentTime');
+        const totalTime = document.getElementById('totalTime');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'play') {
+                showNowPlaying(data.data);
+            } else if (data.type === 'nowplaying') {
+                updateNowPlaying(data);
+            } else if (data.type === 'progress') {
+                updateProgress(data.current, data.total);
+            }
+        };
+
+        function showNowPlaying(media) {
+            mediaTitle.textContent = media.title;
+            mediaRequester.textContent = `Requested by: ${media.requestedBy}`;
+            nowPlaying.classList.add('visible');
+
+            checkTitleScroll();
+        }
+
+        function updateNowPlaying(data) {
+            if (data.current) {
+                mediaTitle.textContent = data.current.title || 'Loading...';
+                mediaRequester.textContent = `Requested by: ${data.current.requestedBy}`;
+                queueCount.textContent = `Queue: ${data.queueLength}`;
+                nowPlaying.classList.add('visible');
+                checkTitleScroll();
+            } else {
+                nowPlaying.classList.remove('visible');
+                progressBar.style.width = '0%';
+                currentTime.textContent = '0:00';
+                totalTime.textContent = '0:00';
+            }
+        }
+
+        function updateProgress(current, total) {
+            if (!total || total === 0) return;
+
+            const percentage = (current / total) * 100;
+            progressBar.style.width = percentage + '%';
+
+            currentTime.textContent = formatTime(current);
+            totalTime.textContent = formatTime(total);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function checkTitleScroll() {
+            const titleContainer = document.querySelector('.title-container');
+            const title = mediaTitle;
+
+            if (title.scrollWidth > titleContainer.clientWidth) {
+                title.classList.add('scrolling');
+            } else {
+                title.classList.remove('scrolling');
+            }
+        }
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onopen = () => {
+            console.log('Connected to media WebSocket server');
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Media Control</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 15px;
+            font-family: Arial, sans-serif;
+            background: #18181b;
+            color: white;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #efeff1;
+        }
+
+        .now-playing {
+            background: #0e0e10;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .media-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .media-info {
+            font-size: 12px;
+            color: #adadb8;
+            margin-bottom: 8px;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #9147ff;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #adadb8;
+            margin-top: 5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+            button:hover {
+                opacity: 0.8;
+            }
+
+        .btn-pause {
+            background: #f7a600;
+            color: white;
+        }
+
+        .btn-skip {
+            background: #eb0400;
+            color: white;
+        }
+
+        .queue-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #0e0e10;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .queue-item {
+            padding: 8px;
+            margin-bottom: 6px;
+            background: #18181b;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .queue-empty {
+            text-align: center;
+            color: #adadb8;
+            padding: 20px;
+            font-size: 12px;
+        }
+
+        .add-media {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #2f2f35;
+            border-radius: 4px;
+            background: #0e0e10;
+            color: white;
+            font-size: 13px;
+        }
+
+        .btn-add {
+            padding: 10px 20px;
+            background: #9147ff;
+            color: white;
+        }
+
+        .type-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .type-btn {
+            flex: 1;
+            padding: 8px;
+            background: #2f2f35;
+            color: white;
+        }
+
+            .type-btn.active {
+                background: #9147ff;
+            }
+    </style>
+</head>
+<body>
+    <div class="section">
+        <div class="section-title">Now Playing</div>
+        <div class="now-playing" id="nowPlaying">
+            <div class="media-title" id="currentTitle">No media playing</div>
+            <div class="media-info" id="currentInfo">Requested by: --</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="time-info">
+                <span id="currentTime">0:00</span>
+                <span id="totalTime">0:00</span>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn-pause" id="pauseBtn" onclick="togglePause()">Pause</button>
+            <button class="btn-skip" onclick="skip()">Skip</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Queue (<span id="queueCount">0</span>)</div>
+        <div class="queue-list" id="queueList">
+            <div class="queue-empty">Queue is empty</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Add Media</div>
+        <div class="type-toggle">
+            <button class="type-btn active" id="musicBtn" onclick="setType('music')">Music</button>
+            <button class="type-btn" id="videoBtn" onclick="setType('video')">Video</button>
+        </div>
+        <div class="add-media">
+            <input type="text" id="urlInput" placeholder="YouTube URL">
+            <button class="btn-add" onclick="addMedia()">Add</button>
+        </div>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8081');
+        let currentType = 'music';
+        let isPaused = false;
+
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'nowplaying') {
+                updateNowPlaying(data);
+            } else if (data.type === 'queue') {
+                updateQueue(data.items);
+            } else if (data.type === 'progress') {
+                updateProgress(data.current, data.total);
+            }
+        };
+
+        function updateNowPlaying(data) {
+            const currentTitle = document.getElementById('currentTitle');
+            const currentInfo = document.getElementById('currentInfo');
+            const pauseBtn = document.getElementById('pauseBtn');
+
+            if (data.current) {
+                currentTitle.textContent = data.current.title || 'Loading...';
+                currentInfo.textContent = `Requested by: ${data.current.requestedBy} | Type: ${data.current.mediaType}`;
+            } else {
+                currentTitle.textContent = 'No media playing';
+                currentInfo.textContent = 'Requested by: --';
+                progressBar.style.width = '0%';
+                currentTimeEl.textContent = '0:00';
+                totalTimeEl.textContent = '0:00';
+            }
+
+            isPaused = data.isPaused || false;
+            pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+
+            document.getElementById('queueCount').textContent = data.queueLength;
+        }
+
+        function updateProgress(current, total) {
+            if (!total || total === 0) return;
+
+            const percentage = (current / total) * 100;
+            progressBar.style.width = percentage + '%';
+
+            currentTimeEl.textContent = formatTime(current);
+            totalTimeEl.textContent = formatTime(total);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateQueue(items) {
+            const queueList = document.getElementById('queueList');
+
+            if (items.length === 0) {
+                queueList.innerHTML = '<div class="queue-empty">Queue is empty</div>';
+                return;
+            }
+
+            queueList.innerHTML = items.map((item, index) => `
+                    <div class="queue-item">
+                        <div style="font-weight: bold;">${index + 1}. ${item.title || 'Loading...'}</div>
+                        <div style="color: #adadb8; margin-top: 2px;">by ${item.requestedBy} • ${item.mediaType}</div>
+                    </div>
+                `).join('');
+        }
+
+        function setType(type) {
+            currentType = type;
+            document.getElementById('musicBtn').classList.toggle('active', type === 'music');
+            document.getElementById('videoBtn').classList.toggle('active', type === 'video');
+        }
+
+        async function addMedia() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) return;
+
+            try {
+                const response = await fetch('http://localhost:8081/api/media/queue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: url,
+                        requestedBy: 'OBS Dock',
+                        type: currentType
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('urlInput').value = '';
+                }
+            } catch (error) {
+                console.error('Error adding media:', error);
+            }
+        }
+
+        async function togglePause() {
+            try {
+                await fetch('http://localhost:8081/api/media/pause', {
+                    method: 'POST'
+                });
+            } catch (error) {
+                console.error('Error toggling pause:', error);
+            }
+        }
+
+        async function skip() {
+            try {
+                await fetch('http://localhost:8081/api/media/skip', {
+                    method: 'POST'
+                });
+            } catch (error) {
+                console.error('Error skipping:', error);
+            }
+        }
+
+        ws.onopen = () => {
+            console.log('Connected to media WebSocket server');
+        };
+    </script>
+</body>
+</html>
